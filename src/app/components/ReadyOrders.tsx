@@ -1,0 +1,142 @@
+import { useState, useEffect } from "react";
+import { ArrowLeft, Clock, Package, CheckCircle, Bike, QrCode, AlertCircle, Loader2 } from "lucide-react";
+import api from "../../api/axios";
+import { useSocket } from "../../hooks/useSocket";
+
+interface ReadyOrdersProps {
+  onNavigate: (screen: string, data?: any) => void;
+  onBack: () => void;
+}
+
+export function ReadyOrders({ onNavigate, onBack }: ReadyOrdersProps) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const socket = useSocket(1);
+
+  const fetchOrders = () => {
+    api.get('/orders?status=ready').then(res => {
+      setOrders(res.data.filter((o: any) => o.order_type !== 'Self Pickup'));
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    fetchOrders();
+
+    if (socket.current) {
+      socket.current.on('order:status', () => {
+        fetchOrders();
+      });
+    }
+
+    return () => {
+      if (socket.current) {
+        socket.current.off('order:status');
+      }
+    };
+  }, [socket]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#F5F7FA] items-center justify-center">
+        <Loader2 className="animate-spin text-[#2E7D32]" size={40} />
+      </div>
+    );
+  }
+
+  const overdueCount = orders.filter(o => o.sla_minutes <= 0).length;
+  // Simulated rider assignment for demo
+  const riderAssignedCount = Math.floor(orders.length / 2);
+
+  return (
+    <div className="flex flex-col min-h-screen bg-[#F5F7FA]">
+      <div style={{ background: "linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%)" }} className="px-4 pt-12 pb-4">
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+            <ArrowLeft size={20} color="white" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-white" style={{ fontWeight: 700, fontSize: "18px" }}>Ready for Dispatch</h1>
+            <p className="text-white/70" style={{ fontSize: "12px" }}>{orders.length} orders packed & ready</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          {[
+            { label: "Ready", value: orders.length, color: "white" },
+            { label: "Rider Assigned", value: riderAssignedCount, color: "#4CAF50" },
+            { label: "Overdue", value: overdueCount, color: "#FF5252" },
+          ].map(s => (
+            <div key={s.label} className="bg-white/10 rounded-xl p-2 text-center">
+              <p style={{ color: s.color, fontWeight: 700, fontSize: "18px" }}>{s.value}</p>
+              <p className="text-white/70" style={{ fontSize: "10px" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 p-4">
+        {orders.map((order, idx) => {
+          const isOverdue = order.elapsed_minutes > order.sla_minutes;
+          const riderAssigned = idx % 2 === 0; // Simulated
+          return (
+            <div key={order.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              {isOverdue && (
+                <div className="bg-red-50 border-b border-red-100 px-4 py-1.5 flex items-center gap-1.5">
+                  <AlertCircle size={12} color="#D32F2F" />
+                  <span style={{ color: "#D32F2F", fontWeight: 600, fontSize: "11px" }}>SLA BREACHED — Dispatch immediately!</span>
+                </div>
+              )}
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-gray-900" style={{ fontWeight: 700, fontSize: "15px" }}>#{order.order_number}</span>
+                      <span className="bg-green-100 text-green-700 rounded-full px-2 py-0.5" style={{ fontSize: "10px", fontWeight: 600 }}>READY</span>
+                    </div>
+                    <span className="text-gray-500" style={{ fontSize: "12px" }}>{order.order_type} · Tray: {order.tray_number || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-1 rounded-full px-2.5 py-1" style={{ backgroundColor: isOverdue ? "#FFEBEE" : "#E8F5E9" }}>
+                    <Clock size={11} color={isOverdue ? "#D32F2F" : "#2E7D32"} />
+                    <span style={{ color: isOverdue ? "#D32F2F" : "#2E7D32", fontWeight: 700, fontSize: "11px" }}>
+                      {isOverdue ? 'OVERDUE' : `${order.sla_minutes - order.elapsed_minutes} min`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 rounded-xl p-2.5 mb-3" style={{ backgroundColor: riderAssigned ? "#E8F5E9" : "#FFF3E0" }}>
+                  <Bike size={16} color={riderAssigned ? "#2E7D32" : "#EF5A06"} />
+                  {riderAssigned ? (
+                    <span className="text-green-700" style={{ fontWeight: 500, fontSize: "12px" }}>Rider: Assigned</span>
+                  ) : (
+                    <span className="text-orange-700" style={{ fontWeight: 500, fontSize: "12px" }}>No rider assigned yet</span>
+                  )}
+                  {riderAssigned && <CheckCircle size={14} color="#2E7D32" className="ml-auto" />}
+                </div>
+
+                <button
+                  onClick={() => onNavigate("handover-verification", order)}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl py-3"
+                  style={{ backgroundColor: "#2E7D32" }}
+                >
+                  <QrCode size={16} color="white" />
+                  <span className="text-white" style={{ fontWeight: 600, fontSize: "14px" }}>Handover to Rider</span>
+                </button>
+              </div>
+            </div>
+          );
+        })}
+        {orders.length === 0 && (
+          <div className="bg-white rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-sm">
+            <CheckCircle size={48} color="#4CAF50" className="mb-3" />
+            <h3 className="text-gray-900 font-bold mb-1">No Orders Ready</h3>
+            <p className="text-gray-500 text-sm">All packed orders have been dispatched.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
