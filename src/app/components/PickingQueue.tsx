@@ -35,8 +35,8 @@ export function PickingQueue({ onNavigate, onBack }: PickingQueueProps) {
       // Calculate mock items data if backend doesn't return full details in this endpoint yet
       const processedOrders = orders.map((o: any) => ({
         ...o,
-        items: 10, // Mock item count for now since items endpoint is separate
-        picked: o.status === 'picking' ? 5 : 0
+        items: o.item_count || 0,
+        picked: o.picked_count || 0
       }));
       setPickingOrders(processedOrders);
     } catch (err) {

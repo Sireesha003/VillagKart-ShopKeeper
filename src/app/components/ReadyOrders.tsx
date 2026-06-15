@@ -99,12 +99,13 @@ export function ReadyOrders({ onNavigate, onBack }: ReadyOrdersProps) {
                     </div>
                     <span className="text-gray-500" style={{ fontSize: "12px" }}>{order.order_type} · Tray: {order.tray_number || 'N/A'}</span>
                   </div>
-                  <div className="flex items-center gap-1 rounded-full px-2.5 py-1" style={{ backgroundColor: isOverdue ? "#FFEBEE" : "#E8F5E9" }}>
-                    <Clock size={11} color={isOverdue ? "#D32F2F" : "#2E7D32"} />
-                    <span style={{ color: isOverdue ? "#D32F2F" : "#2E7D32", fontWeight: 700, fontSize: "11px" }}>
-                      {isOverdue ? 'OVERDUE' : `${order.sla_minutes - order.elapsed_minutes} min`}
-                    </span>
-                  </div>
+                  <button 
+                    onClick={() => onNavigate("order-details", order)}
+                    className="flex items-center gap-1 rounded-full px-3 py-1 bg-gray-100 border border-gray-200"
+                  >
+                    <Package size={11} color="#616161" />
+                    <span style={{ color: "#616161", fontWeight: 700, fontSize: "11px" }}>View Items</span>
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-2 rounded-xl p-2.5 mb-3" style={{ backgroundColor: riderAssigned ? "#E8F5E9" : "#FFF3E0" }}>

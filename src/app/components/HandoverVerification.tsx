@@ -1,15 +1,21 @@
 import { useState } from "react";
-import { ArrowLeft, QrCode, CheckCircle, Scan, Bike } from "lucide-react";
+import { ArrowLeft, QrCode, CheckCircle, Scan, Bike, Loader2 } from "lucide-react";
+import api from "../../api/axios";
 
 interface HandoverVerificationProps {
   onBack: () => void;
   onNavigate: (screen: string) => void;
+  data?: any;
 }
 
 type Step = "staff-scan" | "rider-scan" | "complete";
 
-export function HandoverVerification({ onBack, onNavigate }: HandoverVerificationProps) {
+export function HandoverVerification({ onBack, onNavigate, data }: HandoverVerificationProps) {
   const [step, setStep] = useState<Step>("staff-scan");
+  const [loading, setLoading] = useState(false);
+  const [staffVerifiedAt, setStaffVerifiedAt] = useState<Date | null>(null);
+  const [riderVerifiedAt, setRiderVerifiedAt] = useState<Date | null>(null);
+  const order = data || {};
 
   const steps = [
     { key: "staff-scan", label: "Staff Verification", desc: "Staff scans the order QR" },
@@ -29,7 +35,7 @@ export function HandoverVerification({ onBack, onNavigate }: HandoverVerificatio
           </button>
           <div>
             <h1 className="text-white" style={{ fontWeight: 700, fontSize: "18px" }}>Handover Verification</h1>
-            <p className="text-white/70" style={{ fontSize: "12px" }}>Order #QC100240 · Rider: Arjun Kumar</p>
+            <p className="text-white/70" style={{ fontSize: "12px" }}>Order #{order.order_number || "QC100240"} · Rider: Arjun Kumar</p>
           </div>
         </div>
       </div>
@@ -84,7 +90,7 @@ export function HandoverVerification({ onBack, onNavigate }: HandoverVerificatio
                 <QrCode size={80} color="#1a1a1a" strokeWidth={1.5} />
               </div>
             </div>
-            <p className="text-gray-800 mb-1" style={{ fontWeight: 700, fontSize: "16px" }}>QC100240</p>
+            <p className="text-gray-800 mb-1" style={{ fontWeight: 700, fontSize: "16px" }}>{order.order_number || "QC100240"}</p>
             <p className="text-gray-500" style={{ fontSize: "11px", fontFamily: "monospace" }}>HS7K2-9PLM4-QXR82</p>
           </div>
         )}
@@ -98,7 +104,10 @@ export function HandoverVerification({ onBack, onNavigate }: HandoverVerificatio
               <p className="text-green-600" style={{ fontSize: "12px" }}>Scan the order QR with staff scanner</p>
             </div>
             <button
-              onClick={() => setStep("rider-scan")}
+              onClick={() => {
+                setStaffVerifiedAt(new Date());
+                setStep("rider-scan");
+              }}
               className="w-full flex items-center justify-center gap-2 rounded-xl py-4"
               style={{ backgroundColor: "#00891D" }}
             >
@@ -116,11 +125,25 @@ export function HandoverVerification({ onBack, onNavigate }: HandoverVerificatio
               <p className="text-orange-600" style={{ fontSize: "12px" }}>Rider: Arjun Kumar scans from their device</p>
             </div>
             <button
-              onClick={() => setStep("complete")}
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  if (order.id) {
+                    await api.put(`/orders/${order.id}/status`, { status: 'dispatched' });
+                  }
+                  setRiderVerifiedAt(new Date());
+                  setStep("complete");
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
               className="w-full flex items-center justify-center gap-2 rounded-xl py-4"
-              style={{ backgroundColor: "#EF5A06" }}
+              style={{ backgroundColor: "#EF5A06", opacity: loading ? 0.7 : 1 }}
             >
-              <CheckCircle size={18} color="white" />
+              {loading ? <Loader2 className="animate-spin text-white" size={18} /> : <CheckCircle size={18} color="white" />}
               <span className="text-white" style={{ fontWeight: 600, fontSize: "15px" }}>Rider Verified ✓</span>
             </button>
           </div>
@@ -145,11 +168,11 @@ export function HandoverVerification({ onBack, onNavigate }: HandoverVerificatio
 
             <div className="bg-white rounded-2xl p-4 w-full shadow-sm">
               {[
-                { label: "Order", value: "#QC100240" },
+                { label: "Order", value: `#${order.order_number || "QC100240"}` },
                 { label: "Rider", value: "Arjun Kumar" },
-                { label: "Staff Verified", value: "10:48:22 AM" },
-                { label: "Rider Verified", value: "10:48:45 AM" },
-                { label: "Handover Time", value: "10:48:45 AM" },
+                { label: "Staff Verified", value: staffVerifiedAt ? staffVerifiedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "N/A" },
+                { label: "Rider Verified", value: riderVerifiedAt ? riderVerifiedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "N/A" },
+                { label: "Handover Time", value: riderVerifiedAt ? riderVerifiedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "N/A" },
                 { label: "Status", value: "Dispatched ✓" },
               ].map(row => (
                 <div key={row.label} className="flex justify-between py-1.5 border-b border-gray-50 last:border-0">
@@ -160,11 +183,11 @@ export function HandoverVerification({ onBack, onNavigate }: HandoverVerificatio
             </div>
 
             <button
-              onClick={() => onNavigate("ready-orders")}
+              onClick={() => onNavigate("dashboard")}
               className="w-full flex items-center justify-center gap-2 rounded-xl py-4"
               style={{ backgroundColor: "#2E7D32" }}
             >
-              <span className="text-white" style={{ fontWeight: 600, fontSize: "15px" }}>Back to Ready Orders</span>
+              <span className="text-white" style={{ fontWeight: 600, fontSize: "15px" }}>Back to Dashboard</span>
             </button>
           </div>
         )}

@@ -144,8 +144,8 @@ export function OrderDetails({ onBack, onNavigate, order }: OrderDetailsProps) {
                     {item.image_url ? <img src={item.image_url} alt="" /> : '📦'}
                   </div>
                   <div className="flex-1">
-                    <p className="text-gray-800" style={{ fontWeight: 500, fontSize: "12px" }}>{item.name || item.product?.name}</p>
-                    <p className="text-gray-400" style={{ fontSize: "10px" }}>Qty: {item.quantity} · {(item.aisle_location || item.product?.aisle_location) ?? ''}</p>
+                    <p className="text-gray-800" style={{ fontWeight: 600, fontSize: "14px" }}>{item.name || item.product?.name}</p>
+                    <p className="text-gray-500" style={{ fontSize: "13px", fontWeight: 500, marginTop: "2px" }}>Qty: {item.quantity} · Location: <span style={{color: "#D32F2F", fontWeight: 700}}>{(item.aisle_location || item.product?.aisle_location) ?? ''}</span></p>
                   </div>
                   <span className="text-gray-700" style={{ fontWeight: 600, fontSize: "13px" }}>₹{item.price ?? item.product?.price}</span>
                 </div>

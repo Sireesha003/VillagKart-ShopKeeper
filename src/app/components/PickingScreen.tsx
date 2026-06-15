@@ -12,9 +12,9 @@ function LocationBadge({ location }: { location: string }) {
   if (!location) return null;
   const parts = location.split("-");
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2">
       {parts.map((part, i) => (
-        <span key={i} className="bg-green-100 text-green-700 rounded px-1.5 py-0.5" style={{ fontWeight: 700, fontSize: "10px", fontFamily: "monospace" }}>
+        <span key={i} className="bg-red-100 text-red-700 rounded px-3 py-1.5 shadow-sm" style={{ fontWeight: 800, fontSize: "18px", fontFamily: "monospace", letterSpacing: "1px" }}>
           {part}
         </span>
       ))}
@@ -28,8 +28,18 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
 
   useEffect(() => {
     if (!order?.id) return;
-    api.get(`/orders/${order.id}`).then(res => {
+    api.get(`/orders/${order.id}`).then(async res => {
       setItems(res.data.items || []);
+      
+      // If the order is still "accepted", mark it as "picking" to trigger picking_started_at
+      if (res.data.status === 'accepted') {
+        try {
+          await api.put(`/orders/${order.id}/status`, { status: 'picking' });
+        } catch (e) {
+          console.error('Failed to update status to picking', e);
+        }
+      }
+      
       setLoading(false);
     }).catch(err => {
       console.error(err);
@@ -47,7 +57,15 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
       
       const allPicked = newItems.every(i => i.is_picked);
       if (allPicked) {
-        setTimeout(() => onNavigate("picking-complete", order), 300);
+        setTimeout(async () => {
+          try {
+            const updatedOrderRes = await api.get(`/orders/${order.id}`);
+            onNavigate("picking-complete", updatedOrderRes.data);
+          } catch (e) {
+            // fallback
+            onNavigate("picking-complete", { ...order, picking_completed_at: new Date().toISOString() });
+          }
+        }, 300);
       }
     } catch(err) {
       console.error(err);
@@ -173,8 +191,8 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
                     {item.image_url ? <img src={item.image_url} alt="" /> : '📦'}
                   </div>
                   <div className="flex-1">
-                    <p style={{ fontWeight: 500, fontSize: "12px", color: isPicked ? "#2E7D32" : "#212121" }}>{item.name}</p>
-                    <p style={{ fontSize: "10px", color: "#9E9E9E" }}>Qty: {item.quantity} · {item.aisle_location}</p>
+                    <p style={{ fontWeight: 600, fontSize: "14px", color: isPicked ? "#2E7D32" : "#212121" }}>{item.name}</p>
+                    <p style={{ fontSize: "13px", color: "#757575", fontWeight: 500, marginTop: "2px" }}>Qty: {item.quantity} · Location: <span style={{color: "#D32F2F", fontWeight: 700}}>{item.aisle_location}</span></p>
                   </div>
                   {isPicked ? (
                     <CheckCircle size={18} color="#2E7D32" />

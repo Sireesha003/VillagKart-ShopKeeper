@@ -18,10 +18,11 @@ export function PackingQueue({ onNavigate, onBack }: PackingQueueProps) {
       // Filter for packing statuses
       const orders = res.data.filter((o: any) => o.status === 'packing');
       
-      const processedOrders = orders.map((o: any) => ({
+      const trays = ["P01", "P03", "P05", "P07", "P09"];
+      const processedOrders = orders.map((o: any, index: number) => ({
         ...o,
-        items: 10, // Mock item count
-        tray: o.tray_number || "P03",
+        items: o.item_count || 0,
+        tray: o.tray_number || trays[index % trays.length],
         urgent: o.sla_minutes <= 15
       }));
       setPackingOrders(processedOrders);

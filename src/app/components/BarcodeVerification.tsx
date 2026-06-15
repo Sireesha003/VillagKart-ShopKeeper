@@ -4,15 +4,24 @@ import { ArrowLeft, CheckCircle, XCircle, ZapIcon, RefreshCw } from "lucide-reac
 interface BarcodeVerificationProps {
   onBack: () => void;
   onNavigate: (screen: string) => void;
+  data?: any;
 }
 
 type ScanState = "scanning" | "success" | "mismatch";
 
-export function BarcodeVerification({ onBack, onNavigate }: BarcodeVerificationProps) {
+export function BarcodeVerification({ onBack, onNavigate, data }: BarcodeVerificationProps) {
   const [scanState, setScanState] = useState<ScanState>("scanning");
 
-  const expectedProduct = { name: "Amul Milk 500ml", barcode: "8901030726203", qty: 2, img: "🥛", brand: "Amul" };
-  const mismatchProduct = { name: "Amul Milk 1L", barcode: "8901030726215", img: "🥛" };
+  const order = data || {};
+  const currentItem = order.currentItem || {};
+
+  const expectedProduct = { 
+    name: currentItem.name || "Unknown Product", 
+    barcode: currentItem.barcode || "8901030726203", 
+    qty: currentItem.quantity || 1, 
+    img: currentItem.image_url ? <img src={currentItem.image_url} alt="" className="w-10 h-10 object-cover rounded" /> : "📦" 
+  };
+  const mismatchProduct = { name: "Unknown Mismatch", barcode: "000000000000", img: "📦" };
 
   const handleSuccess = () => setScanState("success");
   const handleMismatch = () => setScanState("mismatch");
@@ -27,7 +36,7 @@ export function BarcodeVerification({ onBack, onNavigate }: BarcodeVerificationP
         </button>
         <div>
           <h1 className="text-white" style={{ fontWeight: 700, fontSize: "18px" }}>Barcode Scanner</h1>
-          <p className="text-white/70" style={{ fontSize: "12px" }}>Order #QC100245 · Item 1 of 12</p>
+          <p className="text-white/70" style={{ fontSize: "12px" }}>Order #{order.order_number || "QC100245"}</p>
         </div>
       </div>
 

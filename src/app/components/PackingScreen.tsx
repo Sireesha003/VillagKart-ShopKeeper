@@ -37,7 +37,10 @@ export function PackingScreen({ onNavigate, onBack, order }: PackingScreenProps)
   const handleCompletePacking = async () => {
     if (allChecked && labelPrinted && order?.id) {
       try {
-        await api.put(`/orders/${order.id}/status`, { status: 'ready' });
+        await api.put(`/orders/${order.id}/status`, { 
+          status: 'ready', 
+          tray_number: order.tray_number || order.tray || 'TBA' 
+        });
         onNavigate("ready-orders");
       } catch (err) {
         console.error(err);
@@ -62,7 +65,7 @@ export function PackingScreen({ onNavigate, onBack, order }: PackingScreenProps)
           </button>
           <div className="flex-1">
             <h1 className="text-white" style={{ fontWeight: 700, fontSize: "18px" }}>Packing — #{order?.order_number}</h1>
-            <p className="text-white/70" style={{ fontSize: "12px" }}>Packing Tray: {order?.tray_number || 'N/A'} · {order?.order_type}</p>
+            <p className="text-white/70" style={{ fontSize: "12px" }}>Packing Tray: {order?.tray_number || order?.tray || 'N/A'} · {order?.order_type}</p>
           </div>
         </div>
 
@@ -91,7 +94,7 @@ export function PackingScreen({ onNavigate, onBack, order }: PackingScreenProps)
               </div>
               <div>
                 <p className="text-gray-500" style={{ fontSize: "11px" }}>PACKING TRAY</p>
-                <p className="text-gray-900" style={{ fontWeight: 700, fontSize: "22px" }}>{order?.tray_number || 'TBA'}</p>
+                <p className="text-gray-900" style={{ fontWeight: 700, fontSize: "22px" }}>{order?.tray_number || order?.tray || 'TBA'}</p>
               </div>
             </div>
             <div className="text-right">

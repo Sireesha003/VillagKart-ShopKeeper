@@ -14,6 +14,7 @@ import { HandoverVerification } from "./components/HandoverVerification";
 import { SelfPickup } from "./components/SelfPickup";
 import { Returns } from "./components/Returns";
 import { SLAMonitoring } from "./components/SLAMonitoring";
+import api from "../api/axios";
 
 type Screen =
   | "dashboard"
@@ -53,11 +54,32 @@ const screensWithoutNav: Screen[] = [
 ];
 
 function ProfileScreen({ onNavigate }: { onNavigate: (screen: string) => void }) {
+  const [stats, setStats] = useState({ orders: 0, completed: 0, sla: 100, selfPickup: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/orders');
+        const allOrders = res.data;
+        const total = allOrders.length;
+        const completed = allOrders.filter((o: any) => o.status === 'dispatched' || o.status === 'delivered').length;
+        const breached = allOrders.filter((o: any) => o.sla_breach).length;
+        const slaPercent = total > 0 ? Math.round(((total - breached) / total) * 100) : 100;
+        const selfPickup = allOrders.filter((o: any) => o.order_type === 'Self Pickup' && o.status === 'ready').length;
+        
+        setStats({ orders: total, completed, sla: slaPercent, selfPickup });
+      } catch (err) {
+        console.error("Failed to load profile stats", err);
+      }
+    };
+    fetchStats();
+  }, []);
+
   const profileSections = [
     {
       title: "Store Operations",
       items: [
-        { label: "Self Pickup Orders", icon: "🏪", screen: "self-pickup" },
+        { label: "Self Pickup Orders", icon: "🏪", screen: "self-pickup", desc: stats.selfPickup > 0 ? `${stats.selfPickup} orders awaiting pickup` : "No pending pickups", badge: stats.selfPickup },
         { label: "Returns Management", icon: "↩️", screen: "returns" },
         { label: "SLA Monitoring", icon: "📊", screen: "sla-monitoring" },
       ],
@@ -82,9 +104,9 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: string) => void })
         <p className="text-white/70" style={{ fontSize: "13px" }}>Store Manager · Hyderabad Store 01</p>
         <div className="flex gap-3 mt-3">
           {[
-            { label: "Orders", value: "67" },
-            { label: "Completed", value: "57" },
-            { label: "SLA %", value: "85%" },
+            { label: "Orders", value: stats.orders.toString() },
+            { label: "Completed", value: stats.completed.toString() },
+            { label: "SLA %", value: `${stats.sla}%` },
           ].map(s => (
             <div key={s.label} className="bg-white/10 rounded-xl px-4 py-2 text-center">
               <p className="text-white" style={{ fontWeight: 700, fontSize: "16px" }}>{s.value}</p>
@@ -110,8 +132,15 @@ function ProfileScreen({ onNavigate }: { onNavigate: (screen: string) => void })
               >
                 <span style={{ fontSize: "20px" }}>{item.icon}</span>
                 <div className="flex-1">
-                  <p className="text-gray-800" style={{ fontWeight: 500, fontSize: "13px" }}>{item.label}</p>
-                  {"desc" in item && <p className="text-gray-400" style={{ fontSize: "11px" }}>{(item as { desc: string }).desc}</p>}
+                  <div className="flex items-center gap-2">
+                    <p className="text-gray-800" style={{ fontWeight: 500, fontSize: "13px" }}>{item.label}</p>
+                    {("badge" in item && (item as any).badge > 0) && (
+                      <span className="bg-[#EF5A06] text-white rounded-full px-2 py-0.5" style={{ fontSize: "10px", fontWeight: 700 }}>
+                        {(item as any).badge}
+                      </span>
+                    )}
+                  </div>
+                  {"desc" in item && <p className="text-gray-400 mt-0.5" style={{ fontSize: "11px" }}>{(item as { desc: string }).desc}</p>}
                 </div>
                 {"screen" in item && (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BDBDBD" strokeWidth="2">
@@ -182,12 +211,12 @@ export default function App() {
         {screen === "order-details" && <OrderDetails onBack={goBack} onNavigate={navigate} order={orderData as any} />}
         {screen === "picking-queue" && <PickingQueue onNavigate={navigate} onBack={goBack} />}
         {screen === "picking-screen" && <PickingScreen onNavigate={navigate} onBack={goBack} order={orderData as any} />}
-        {screen === "barcode-verification" && <BarcodeVerification onBack={goBack} onNavigate={navigate} />}
-        {screen === "picking-complete" && <PickingComplete onNavigate={navigate} />}
+        {screen === "barcode-verification" && <BarcodeVerification onBack={goBack} onNavigate={navigate} data={orderData as any} />}
+        {screen === "picking-complete" && <PickingComplete onNavigate={navigate} data={orderData as any} />}
         {screen === "packing-queue" && <PackingQueue onNavigate={navigate} onBack={goBack} />}
         {screen === "packing-screen" && <PackingScreen onNavigate={navigate} onBack={goBack} order={orderData as any} />}
         {screen === "ready-orders" && <ReadyOrders onNavigate={navigate} onBack={goBack} />}
-        {screen === "handover-verification" && <HandoverVerification onBack={goBack} onNavigate={navigate} />}
+        {screen === "handover-verification" && <HandoverVerification onBack={goBack} onNavigate={navigate} data={orderData as any} />}
         {screen === "self-pickup" && <SelfPickup onBack={goBack} />}
         {screen === "returns" && <Returns onBack={goBack} />}
         {screen === "sla-monitoring" && <SLAMonitoring onBack={goBack} />}
@@ -202,11 +231,23 @@ export default function App() {
         {/* Desktop Sidebar */}
         <div className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 shadow-sm sticky top-0 h-screen">
           <div className="p-6 border-b border-gray-100 flex flex-col items-center">
-            <div className="w-12 h-12 rounded-xl bg-[#00891D] flex items-center justify-center mb-3">
-              <span className="text-white font-bold text-xl">VK</span>
+            <div className="flex items-center justify-center gap-3 mb-1">
+              <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Bag Handle */}
+                <path d="M35 35 V22 A15 15 0 0 1 65 22 V35" fill="none" stroke="#006614" strokeWidth="8" />
+                {/* Bag Body */}
+                <path d="M15 35 L8 85 A8 8 0 0 0 16 95 H84 A8 8 0 0 0 92 85 L85 35 Z" fill="#006614" />
+                {/* Checkmark (V) */}
+                <polygon points="32,45 44,45 44,58 70,38 78,45 32,78" fill="#D1D5DB" />
+                {/* Orange K Leg */}
+                <polygon points="46,68 56,60 72,78 62,85" fill="#C04000" />
+              </svg>
+              <h2 className="font-bold text-[30px] tracking-tight">
+                <span className="text-[#006614]">Villag</span>
+                <span className="text-[#EF5A06]">Kart</span>
+              </h2>
             </div>
-            <h2 className="font-bold text-gray-800 text-lg">VillagKart</h2>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mt-1">Shopkeeper</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Shopkeeper</p>
           </div>
           
           <div className="flex-1 py-6 flex flex-col gap-2 px-4">

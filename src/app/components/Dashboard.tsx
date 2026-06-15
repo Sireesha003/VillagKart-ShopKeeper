@@ -103,13 +103,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     { label: "SLA Monitor", icon: TrendingUp, color: "#D32F2F", bg: "#FFEBEE", screen: "sla-monitoring", badge: stats.slaAlerts },
   ];
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F5F7FA]">
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #00891D 0%, #006614 100%)" }} className="px-4 pt-12 pb-6">
         <div className="flex items-center justify-between mb-1">
           <div>
-            <p className="text-white/70 text-sm">Good Morning 👋</p>
+            <p className="text-white/70 text-sm">{getGreeting()} 👋</p>
             <h1 className="text-white text-xl" style={{ fontWeight: 700 }}>Hyderabad Store 01</h1>
           </div>
           <div className="flex gap-2">
@@ -222,7 +229,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             return (
               <button
                 key={order.id}
-                onClick={() => onNavigate("order-details")}
+                onClick={() => onNavigate("order-details", order)}
                 className="bg-white rounded-2xl p-3.5 shadow-sm text-left flex items-center gap-3 hover:bg-gray-50 active:scale-98 transition-transform"
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: statusBg }}>
@@ -237,7 +244,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   </div>
                   <div className="flex items-center justify-between mt-0.5">
                     <span className="text-gray-500" style={{ fontSize: "11px" }}>{order.order_type} · ₹{order.total_value}</span>
-                    <span className="text-gray-400" style={{ fontSize: "10px" }}>{new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <span className="text-gray-400" style={{ fontSize: "10px" }}>
+                      {order.status === 'dispatched' && order.dispatched_at
+                        ? `Dispatched: ${new Date(order.dispatched_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
+                        : new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1 mt-1">
                     <Clock size={10} color="#9E9E9E" />
