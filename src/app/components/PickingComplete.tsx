@@ -29,14 +29,14 @@ export function PickingComplete({ onNavigate, data }: PickingCompleteProps) {
           <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mx-auto mb-2">
             <Package size={20} color="#00891D" />
           </div>
-          <p className="text-gray-900" style={{ fontWeight: 700, fontSize: "22px" }}>{order.item_count || 12}</p>
+          <p className="text-gray-900" style={{ fontWeight: 700, fontSize: "22px" }}>{order.items?.length || order.item_count || 0}</p>
           <p className="text-gray-500" style={{ fontSize: "11px" }}>Total Items</p>
         </div>
         <div className="bg-white rounded-2xl p-4 text-center shadow-sm">
           <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mx-auto mb-2">
             <CheckCircle size={20} color="#2E7D32" />
           </div>
-          <p className="text-green-700" style={{ fontWeight: 700, fontSize: "22px" }}>{order.item_count || 12}</p>
+          <p className="text-green-700" style={{ fontWeight: 700, fontSize: "22px" }}>{order.items?.length || order.item_count || 0}</p>
           <p className="text-gray-500" style={{ fontSize: "11px" }}>Picked</p>
         </div>
         <div className="bg-white rounded-2xl p-4 text-center shadow-sm">

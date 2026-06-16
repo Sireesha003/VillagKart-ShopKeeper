@@ -30,7 +30,42 @@ export const getSLAReport = async (req: Request, res: Response) => {
       WHERE created_at >= CURRENT_DATE
     `);
 
-    res.json({ breaches, summary: summary[0] });
+    // Hourly order volume (last 6 hours in 30-min slots)
+    const { rows: hourlyRaw } = await pool.query(`
+      SELECT
+        TO_CHAR(DATE_TRUNC('hour', created_at) + 
+          INTERVAL '30 min' * FLOOR(EXTRACT(MINUTE FROM created_at)/30), 'HH24:MI') AS time,
+        COUNT(*)::int AS orders,
+        COUNT(*) FILTER (
+          WHERE EXTRACT(EPOCH FROM (COALESCE(dispatched_at, NOW()) - created_at))/60 <= sla_minutes
+        )::int AS "onTime",
+        COUNT(*) FILTER (
+          WHERE EXTRACT(EPOCH FROM (COALESCE(dispatched_at, NOW()) - created_at))/60 > sla_minutes
+        )::int AS breached
+      FROM orders
+      WHERE created_at >= NOW() - INTERVAL '6 hours'
+      GROUP BY 1
+      ORDER BY 1
+    `);
+
+    // Stage processing times per 30-min slot
+    const { rows: stageRaw } = await pool.query(`
+      SELECT
+        TO_CHAR(DATE_TRUNC('hour', created_at) + 
+          INTERVAL '30 min' * FLOOR(EXTRACT(MINUTE FROM created_at)/30), 'HH24:MI') AS time,
+        COALESCE(ROUND(AVG(CASE WHEN picking_started_at IS NOT NULL AND picking_completed_at IS NOT NULL
+          THEN EXTRACT(EPOCH FROM (picking_completed_at - picking_started_at))/60 END)::numeric, 1), 0) AS picking,
+        COALESCE(ROUND(AVG(CASE WHEN packing_started_at IS NOT NULL AND packing_completed_at IS NOT NULL
+          THEN EXTRACT(EPOCH FROM (packing_completed_at - packing_started_at))/60 END)::numeric, 1), 0) AS packing,
+        COALESCE(ROUND(AVG(CASE WHEN packing_completed_at IS NOT NULL AND dispatched_at IS NOT NULL
+          THEN EXTRACT(EPOCH FROM (dispatched_at - packing_completed_at))/60 END)::numeric, 1), 0) AS handover
+      FROM orders
+      WHERE created_at >= NOW() - INTERVAL '6 hours'
+      GROUP BY 1
+      ORDER BY 1
+    `);
+
+    res.json({ breaches, summary: summary[0], hourlyData: hourlyRaw, processingTimes: stageRaw });
   } catch (err) {
     console.error('[getSLAReport]', err);
     res.status(500).json({ error: 'Internal Server Error' });

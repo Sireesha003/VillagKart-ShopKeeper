@@ -71,14 +71,14 @@ async function run() {
         tray_number VARCHAR(10),
         picker_id INTEGER,
         packer_id INTEGER,
-        accepted_at TIMESTAMP,
-        picking_started_at TIMESTAMP,
-        picking_completed_at TIMESTAMP,
-        packing_started_at TIMESTAMP,
-        packing_completed_at TIMESTAMP,
-        dispatched_at TIMESTAMP,
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
+        accepted_at TIMESTAMPTZ,
+        picking_started_at TIMESTAMPTZ,
+        picking_completed_at TIMESTAMPTZ,
+        packing_started_at TIMESTAMPTZ,
+        packing_completed_at TIMESTAMPTZ,
+        dispatched_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS order_items (
@@ -105,20 +105,41 @@ async function run() {
         reason VARCHAR(200),
         status VARCHAR(50) DEFAULT 'pending',
         refund_amount DECIMAL(10,2),
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS sla_logs (
         id SERIAL PRIMARY KEY,
         order_id INTEGER,
         event VARCHAR(100),
-        expected_time TIMESTAMP,
-        actual_time TIMESTAMP,
+        expected_time TIMESTAMPTZ,
+        actual_time TIMESTAMPTZ,
         breach BOOLEAN DEFAULT false,
-        created_at TIMESTAMP DEFAULT NOW()
+        created_at TIMESTAMPTZ DEFAULT NOW()
       );
     `);
     console.log('✅ Schema ready');
+
+    console.log('🔄 Altering timestamp columns to TIMESTAMPTZ...');
+    await client.query(`
+      ALTER TABLE orders 
+        ALTER COLUMN accepted_at TYPE TIMESTAMPTZ USING accepted_at AT TIME ZONE 'UTC',
+        ALTER COLUMN picking_started_at TYPE TIMESTAMPTZ USING picking_started_at AT TIME ZONE 'UTC',
+        ALTER COLUMN picking_completed_at TYPE TIMESTAMPTZ USING picking_completed_at AT TIME ZONE 'UTC',
+        ALTER COLUMN packing_started_at TYPE TIMESTAMPTZ USING packing_started_at AT TIME ZONE 'UTC',
+        ALTER COLUMN packing_completed_at TYPE TIMESTAMPTZ USING packing_completed_at AT TIME ZONE 'UTC',
+        ALTER COLUMN dispatched_at TYPE TIMESTAMPTZ USING dispatched_at AT TIME ZONE 'UTC',
+        ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC',
+        ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
+        
+      ALTER TABLE sla_logs
+        ALTER COLUMN expected_time TYPE TIMESTAMPTZ USING expected_time AT TIME ZONE 'UTC',
+        ALTER COLUMN actual_time TYPE TIMESTAMPTZ USING actual_time AT TIME ZONE 'UTC',
+        ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+        
+      ALTER TABLE returns
+        ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+    `);
 
     // Clear old data in dependency order
     console.log('🗑️  Clearing old data...');
@@ -152,32 +173,32 @@ async function run() {
     // 3. Products
     console.log('🛒 Seeding products...');
     await client.query(`
-      INSERT INTO products (name, sku, barcode, price, category, aisle_location, stock_qty) VALUES
-      ('Amul Milk 500ml',       'MILK001', '8901063024427', 28.00,  'Dairy',      'A1', 50),
-      ('Amul Butter 100g',      'BTR001',  '8901063025423', 55.00,  'Dairy',      'A1', 35),
-      ('Bread Loaf',            'BRD001',  '8906001234567', 42.00,  'Bakery',     'B2', 30),
-      ('Brown Bread',           'BRD002',  '8906001234568', 55.00,  'Bakery',     'B2', 20),
-      ('Eggs 12pcs',            'EGG001',  '8901234567890', 75.00,  'Dairy',      'A2', 20),
-      ('Surf Excel 1kg',        'DET001',  '8901030829023', 120.00, 'Household',  'C1', 25),
-      ('Vim Dishwash 500g',     'DSH001',  '8901030812010', 65.00,  'Household',  'C2', 18),
-      ('Head & Shoulders 200ml','SHP001',  '8001090145215', 180.00, 'Personal',   'D1', 15),
-      ('Nivea Face Wash 100ml', 'FCW001',  '4005900355683', 150.00, 'Personal',   'D2', 18),
-      ('Basmati Rice 5kg',      'RCE001',  '8904267001234', 350.00, 'Staples',    'E1', 12),
-      ('Toor Dal 1kg',          'DAL001',  '8904267005678', 120.00, 'Staples',    'E2', 20),
-      ('Sunflower Oil 1L',      'OIL001',  '8901289034012', 140.00, 'Cooking',    'E3', 10),
-      ('Lays Chips 52g',        'CHP001',  '8901491106940', 20.00,  'Snacks',     'F1', 40),
-      ('Frooti 200ml',          'JCE001',  '8901063001190', 18.00,  'Beverages',  'G1', 35),
-      ('Parle-G Biscuits 200g', 'BSC001',  '8901719110153', 10.00,  'Snacks',     'F2', 60),
-      ('Colgate Total 200g',    'TPT001',  '8901314002444', 90.00,  'Personal',   'D3', 22),
-      ('Dettol Soap 75g',       'SOP001',  '8901396012832', 40.00,  'Personal',   'D4', 30),
-      ('Maggi 70g',             'MGI001',  '8901058856787', 14.00,  'Instant',    'F3', 45),
-      ('Pepsi 750ml',           'PPS001',  '8901234500001', 40.00,  'Beverages',  'G2', 25),
-      ('Coca Cola 750ml',       'CCL001',  '8901234500002', 40.00,  'Beverages',  'G2', 25),
-      ('Haldiram Bhujia 200g',  'HLD001',  '8906003100001', 80.00,  'Snacks',     'F4', 15),
-      ('Nestle KitKat 4F',      'KTK001',  '8901234600001', 30.00,  'Snacks',     'F5', 50),
-      ('Tropicana OJ 1L',       'TRO001',  '8901234700001', 120.00, 'Beverages',  'G3', 12),
-      ('Saffola Gold Oil 1L',   'SFG001',  '8901289010001', 160.00, 'Cooking',    'E4', 8),
-      ('Atta 5kg Aashirvaad',   'ATT001',  '8901600000001', 250.00, 'Staples',    'E5', 15);
+      INSERT INTO products (name, sku, barcode, price, category, aisle_location, stock_qty, image_url) VALUES
+      ('Amul Milk 500ml',       'MILK001', '8901063024427', 28.00,  'Dairy',      'A1', 50, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Amul%20Milk.jfif'),
+      ('Amul Butter 100g',      'BTR001',  '8901063025423', 55.00,  'Dairy',      'A1', 35, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Amul%20Milk.jfif'),
+      ('Bread Loaf',            'BRD001',  '8906001234567', 42.00,  'Bakery',     'B2', 30, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Britania%20Brown%20Bread.jfif'),
+      ('Brown Bread',           'BRD002',  '8906001234568', 55.00,  'Bakery',     'B2', 20, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Britania%20Brown%20Bread.jfif'),
+      ('Eggs 12pcs',            'EGG001',  '8901234567890', 75.00,  'Dairy',      'A2', 20, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Eggs.jfif'),
+      ('Surf Excel 1kg',        'DET001',  '8901030829023', 120.00, 'Household',  'C1', 25, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Surf%20Excel.jfif'),
+      ('Vim Dishwash 500g',     'DSH001',  '8901030812010', 65.00,  'Household',  'C2', 18, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Surf%20Excel.jfif'),
+      ('Head & Shoulders 200ml','SHP001',  '8001090145215', 180.00, 'Personal',   'D1', 15, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Head%20%26%20Shoulder.jfif'),
+      ('Nivea Face Wash 100ml', 'FCW001',  '4005900355683', 150.00, 'Personal',   'D2', 18, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Nivea.jfif'),
+      ('Basmati Rice 5kg',      'RCE001',  '8904267001234', 350.00, 'Staples',    'E1', 12, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Basmathi%20Rice.jfif'),
+      ('Toor Dal 1kg',          'DAL001',  '8904267005678', 120.00, 'Staples',    'E2', 20, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Split_Red_Lentil.jpg'),
+      ('Sunflower Oil 1L',      'OIL001',  '8901289034012', 140.00, 'Cooking',    'E3', 10, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Sunflower%20Oil.jpg'),
+      ('Lays Chips 52g',        'CHP001',  '8901491106940', 20.00,  'Snacks',     'F1', 40, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Lays.jpg'),
+      ('Frooti 200ml',          'JCE001',  '8901063001190', 18.00,  'Beverages',  'G1', 35, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Mango.jpg'),
+      ('Parle-G Biscuits 200g', 'BSC001',  '8901719110153', 10.00,  'Snacks',     'F2', 60, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Buscuits.jpg'),
+      ('Colgate Total 200g',    'TPT001',  '8901314002444', 90.00,  'Personal',   'D3', 22, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Colgate.jpg'),
+      ('Dettol Soap 75g',       'SOP001',  '8901396012832', 40.00,  'Personal',   'D4', 30, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Detol.jpg'),
+      ('Maggi 70g',             'MGI001',  '8901058856787', 14.00,  'Instant',    'F3', 45, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Maggi%20Masala%20Noodles%20140g,%20HD%20Png%20Download%20,%20Transparent%20Png%20Image%20-%20PNGitem.jfif'),
+      ('Pepsi 750ml',           'PPS001',  '8901234500001', 40.00,  'Beverages',  'G2', 25, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Coco%20Cola.jfif'),
+      ('Coca Cola 750ml',       'CCL001',  '8901234500002', 40.00,  'Beverages',  'G2', 25, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Coco%20Cola.jfif'),
+      ('Haldiram Bhujia 200g',  'HLD001',  '8906003100001', 80.00,  'Snacks',     'F4', 15, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Lays.jpg'),
+      ('Nestle KitKat 4F',      'KTK001',  '8901234600001', 30.00,  'Snacks',     'F5', 50, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Buscuits.jpg'),
+      ('Tropicana OJ 1L',       'TRO001',  '8901234700001', 120.00, 'Beverages',  'G3', 12, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Mango.jpg'),
+      ('Saffola Gold Oil 1L',   'SFG001',  '8901289010001', 160.00, 'Cooking',    'E4', 8,  'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Fortune%20oil.jfif'),
+      ('Atta 5kg Aashirvaad',   'ATT001',  '8901600000001', 250.00, 'Staples',    'E5', 15, 'https://kfosvbmzijezatgezbxa.supabase.co/storage/v1/object/public/product-images/Ashirivaad.jfif');
     `);
 
     // 4. Staff
@@ -196,58 +217,46 @@ async function run() {
     // 5. Orders
     console.log('📋 Seeding orders...');
     await client.query(`
-      INSERT INTO orders (order_number, store_id, customer_id, order_type, status, payment_method, total_value, sla_minutes, priority, tray_number, picker_id, packer_id, accepted_at, picking_started_at, picking_completed_at, packing_started_at, dispatched_at, created_at) VALUES
-      ('QC100245', 1, 1, 'Quick Commerce', 'new',        'Online Paid', 1240.00, 15, 'HIGH',   NULL,  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '2 minutes'),
-      ('EC100246', 1, 2, 'E-Commerce',     'new',        'COD',          890.00, 45, 'MEDIUM', NULL,  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '8 minutes'),
-      ('WA100247', 1, 3, 'WhatsApp',       'picking',    'Online Paid', 1080.00, 20, 'HIGH',   NULL,  2,    NULL, NOW() - INTERVAL '14 minutes', NOW() - INTERVAL '13 minutes', NULL, NULL, NULL, NOW() - INTERVAL '15 minutes'),
-      ('CC100248', 1, 4, 'Call Center',    'packing',    'COD',          420.00, 30, 'LOW',    'P03', 2,    3,    NOW() - INTERVAL '21 minutes', NOW() - INTERVAL '20 minutes', NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '14 minutes', NULL, NOW() - INTERVAL '22 minutes'),
-      ('QC100249', 1, 5, 'Quick Commerce', 'ready',      'Online Paid',  760.00, 15, 'HIGH',   'P07', 4,    3,    NOW() - INTERVAL '34 minutes', NOW() - INTERVAL '33 minutes', NOW() - INTERVAL '25 minutes', NOW() - INTERVAL '24 minutes', NULL, NOW() - INTERVAL '35 minutes'),
-      ('EC100250', 1, 1, 'E-Commerce',     'dispatched', 'Online Paid', 1500.00, 45, 'MEDIUM', NULL,  2,    3,    NOW() - INTERVAL '54 minutes', NOW() - INTERVAL '53 minutes', NOW() - INTERVAL '40 minutes', NOW() - INTERVAL '39 minutes', NOW() - INTERVAL '25 minutes', NOW() - INTERVAL '55 minutes'),
-      ('WA100251', 1, 2, 'Self Pickup',    'new',        'COD',          320.00, 60, 'LOW',    NULL,  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '5 minutes'),
-      ('CC100252', 1, 3, 'Call Center',    'new',        'COD',          580.00, 30, 'MEDIUM', NULL,  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '1 minute'),
-      ('QC100253', 1, 6, 'Quick Commerce', 'picking',    'Online Paid',  430.00, 15, 'HIGH',   NULL,  4,    NULL, NOW() - INTERVAL '10 minutes', NOW() - INTERVAL '9 minutes',  NULL, NULL, NULL, NOW() - INTERVAL '12 minutes'),
-      ('EC100254', 1, 7, 'E-Commerce',     'ready',      'Online Paid', 1120.00, 45, 'MEDIUM', 'P02', 2,    3,    NOW() - INTERVAL '50 minutes', NOW() - INTERVAL '49 minutes', NOW() - INTERVAL '35 minutes', NOW() - INTERVAL '34 minutes', NULL, NOW() - INTERVAL '55 minutes'),
-      ('WA100255', 2, 8, 'WhatsApp',       'new',        'COD',          275.00, 20, 'MEDIUM', NULL,  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '3 minutes'),
-      ('CC100256', 2, 1, 'Call Center',    'dispatched', 'Online Paid',  950.00, 30, 'HIGH',   NULL,  6,    NULL, NOW() - INTERVAL '45 minutes', NOW() - INTERVAL '44 minutes', NOW() - INTERVAL '30 minutes', NOW() - INTERVAL '29 minutes', NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '48 minutes');
+      INSERT INTO orders (order_number, store_id, customer_id, order_type, status, payment_method, total_value, sla_minutes, priority, created_at, updated_at) VALUES
+      ('QC100245', 1, 1, 'Quick Commerce', 'new', 'Online Paid', 1240.00, 15, 'HIGH',   NOW()-INTERVAL '2 min',  NOW()-INTERVAL '2 min'),
+      ('EC100246', 1, 2, 'E-Commerce',     'new', 'COD',          890.00, 45, 'MEDIUM', NOW()-INTERVAL '8 min',  NOW()-INTERVAL '8 min'),
+      ('WA100247', 1, 3, 'WhatsApp',       'new', 'Online Paid', 1080.00, 20, 'HIGH',   NOW()-INTERVAL '15 min', NOW()-INTERVAL '14 min'),
+      ('CC100248', 1, 4, 'Call Center',    'new', 'COD',          420.00, 30, 'LOW',    NOW()-INTERVAL '22 min', NOW()-INTERVAL '18 min'),
+      ('QC100249', 1, 5, 'Quick Commerce', 'new', 'Online Paid',  760.00, 15, 'HIGH',   NOW()-INTERVAL '35 min', NOW()-INTERVAL '10 min'),
+      ('EC100250', 1, 1, 'E-Commerce',     'new', 'Online Paid', 1500.00, 45, 'MEDIUM', NOW()-INTERVAL '55 min', NOW()-INTERVAL '5 min'),
+      ('WA100251', 1, 2, 'Self Pickup',    'new', 'COD',          320.00, 60, 'LOW',    NOW()-INTERVAL '5 min',  NOW()-INTERVAL '5 min'),
+      ('CC100252', 1, 3, 'Call Center',    'new', 'COD',          580.00, 30, 'MEDIUM', NOW()-INTERVAL '1 min',  NOW()-INTERVAL '1 min'),
+      ('QC100253', 1, 6, 'Quick Commerce', 'new', 'Online Paid',  950.00, 15, 'HIGH',   NOW()-INTERVAL '10 min', NOW()-INTERVAL '9 min'),
+      ('EC100254', 1, 7, 'E-Commerce',     'new', 'Online Paid', 1320.00, 45, 'MEDIUM', NOW()-INTERVAL '20 min', NOW()-INTERVAL '18 min'),
+      ('WA100255', 1, 8, 'WhatsApp',       'new', 'COD',          640.00, 30, 'LOW',    NOW()-INTERVAL '40 min', NOW()-INTERVAL '25 min'),
+      ('QC100256', 1, 1, 'Quick Commerce', 'new', 'Online Paid',  880.00, 15, 'HIGH',   NOW()-INTERVAL '70 min', NOW()-INTERVAL '50 min');
     `);
 
     // 6. Order Items
     console.log('📦 Seeding order items...');
     await client.query(`
       INSERT INTO order_items (order_id, product_id, quantity, picked_qty, is_picked, is_verified) VALUES
-      -- Order 1: QC100245 (new)
       (1, 1, 2, 0, false, false), (1, 3, 1, 0, false, false), (1, 5, 1, 0, false, false), (1, 13, 3, 0, false, false), (1, 14, 2, 0, false, false),
-      -- Order 2: EC100246 (new)
       (2, 6, 1, 0, false, false), (2, 8, 1, 0, false, false), (2, 9, 1, 0, false, false),
-      -- Order 3: WA100247 (picking)
-      (3, 10, 1, 1, true,  false), (3, 11, 1, 0, false, false), (3, 12, 1, 0, false, false), (3, 15, 2, 2, true, false),
-      -- Order 4: CC100248 (packing)
-      (4, 13, 2, 2, true, true), (4, 14, 3, 3, true, true), (4, 15, 1, 1, true, true),
-      -- Order 5: QC100249 (ready)
-      (5, 1,  1, 1, true, true), (5, 16, 1, 1, true, true), (5, 17, 2, 2, true, true),
-      -- Order 6: EC100250 (dispatched)
-      (6, 10, 2, 2, true, true), (6, 11, 2, 2, true, true), (6, 12, 1, 1, true, true),
-      -- Order 7: WA100251 (new - self pickup)
-      (7, 3,  1, 0, false, false), (7, 18, 3, 0, false, false),
-      -- Order 8: CC100252 (new)
-      (8, 6,  1, 0, false, false), (8, 13, 1, 0, false, false), (8, 8, 1, 0, false, false),
-      -- Order 9: QC100253 (picking)
-      (9, 19, 2, 2, true, false), (9, 20, 1, 0, false, false), (9, 22, 1, 0, false, false),
-      -- Order 10: EC100254 (ready)
-      (10, 10, 1, 1, true, true), (10, 24, 1, 1, true, true), (10, 25, 2, 2, true, true), (10, 6, 1, 1, true, true),
-      -- Order 11: WA100255 (new)
-      (11, 1, 2, 0, false, false), (11, 15, 1, 0, false, false),
-      -- Order 12: CC100256 (dispatched)
-      (12, 10, 1, 1, true, true), (12, 21, 2, 2, true, true), (12, 23, 1, 1, true, true);
+      (3,7,1,0,false),(3,8,1,0,false),(3,9,1,0,false),(3,12,2,0,false),
+      (4,10,2,0,false),(4,11,3,0,false),(4,12,1,0,false),
+      (5,1,1,0,false),(5,13,1,0,false),(5,14,2,0,false),
+      (6,7,2,0,false),(6,8,2,0,false),(6,9,1,0,false),
+      (7,2,1,0,false),(7,15,3,0,false),
+      (8,4,1,0,false),(8,10,1,0,false),(8,5,1,0,false),
+      (9,17,1,0,false),(9,18,1,0,false),(9,19,2,0,false),(9,20,2,0,false),
+      (10,1,2,0,false),(10,16,1,0,false),(10,3,2,0,false),
+      (11,13,1,0,false),(11,14,2,0,false),(11,6,1,0,false),
+      (12,15,3,0,false),(12,10,2,0,false);
     `);
 
     // 7. Packing Trays
     console.log('🗂️  Seeding packing trays...');
     await client.query(`
       INSERT INTO packing_trays (tray_number, store_id, is_active, current_order_id) VALUES
-      ('P01', 1, false, NULL), ('P02', 1, true,  10),  ('P03', 1, true,  4),
+      ('P01', 1, false, NULL), ('P02', 1, false, NULL), ('P03', 1, false, NULL),
       ('P04', 1, false, NULL), ('P05', 1, false, NULL), ('P06', 1, false, NULL),
-      ('P07', 1, true,  5),   ('P08', 1, false, NULL), ('P09', 1, false, NULL), ('P10', 1, false, NULL),
+      ('P07', 1, false, NULL), ('P08', 1, false, NULL), ('P09', 1, false, NULL), ('P10', 1, false, NULL),
       ('S2-P01', 2, false, NULL), ('S2-P02', 2, false, NULL), ('S2-P03', 2, false, NULL);
     `);
 
@@ -263,12 +272,20 @@ async function run() {
     console.log('📊 Seeding SLA logs...');
     await client.query(`
       INSERT INTO sla_logs (order_id, event, expected_time, actual_time, breach) VALUES
-      (3, 'picking_started',    NOW() - INTERVAL '12 minutes', NOW() - INTERVAL '13 minutes', false),
-      (4, 'picking_completed',  NOW() - INTERVAL '12 minutes', NOW() - INTERVAL '15 minutes', false),
-      (4, 'packing_started',    NOW() - INTERVAL '10 minutes', NOW() - INTERVAL '14 minutes', false),
-      (5, 'packing_completed',  NOW() - INTERVAL '20 minutes', NOW() - INTERVAL '24 minutes', false),
-      (6, 'dispatched',         NOW() - INTERVAL '10 minutes', NOW() - INTERVAL '25 minutes', true),
-      (12,'dispatched',         NOW() - INTERVAL '18 minutes', NOW() - INTERVAL '15 minutes', false);
+      (3, 'acceptance', NOW()+INTERVAL '13 min',  NULL, false),
+      (3, 'picking',    NOW()+INTERVAL '15 min',  NULL, false),
+      (4, 'packing',    NOW()+INTERVAL '18 min',  NULL, false);
+    `);
+
+    // ─── 10. Update Total Values ──────────────────────────────────────────
+    await client.query(`
+      UPDATE orders o
+      SET total_value = (
+        SELECT COALESCE(SUM(p.price * oi.quantity), 0)
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = o.id
+      )
     `);
 
     console.log('\n🎉 All done! Supabase database seeded successfully.');

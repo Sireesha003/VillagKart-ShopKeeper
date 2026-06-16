@@ -6,9 +6,29 @@ import { io } from '../index';
 export const getReturns = async (req: Request, res: Response) => {
   try {
     const { rows } = await pool.query(`
-      SELECT r.*, o.order_number, c.name AS customer_name, c.phone AS customer_phone
+      SELECT
+        r.*,
+        o.order_number,
+        o.order_type,
+        o.payment_method,
+        o.total_value,
+        c.name  AS customer_name,
+        c.phone AS customer_phone,
+        c.address AS customer_address,
+        (
+          SELECT json_agg(json_build_object(
+            'name',          p.name,
+            'image_url',     p.image_url,
+            'category',      p.category,
+            'quantity',      oi.quantity,
+            'price',         p.price
+          ))
+          FROM order_items oi
+          JOIN products p ON oi.product_id = p.id
+          WHERE oi.order_id = o.id
+        ) AS items
       FROM returns r
-      JOIN orders o ON r.order_id = o.id
+      JOIN orders   o ON r.order_id    = o.id
       JOIN customers c ON o.customer_id = c.id
       ORDER BY r.created_at DESC
     `);
@@ -50,6 +70,22 @@ export const approveReturn = async (req: Request, res: Response) => {
     res.json(rows[0]);
   } catch (err) {
     console.error('[approveReturn]', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// PUT /api/returns/:id/reject
+export const rejectReturn = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query(`
+      UPDATE returns SET status = 'rejected', updated_at = NOW() WHERE id = $1 RETURNING *
+    `, [id]);
+    if (!rows.length) return res.status(404).json({ error: 'Return not found' });
+    io.emit('return:rejected', rows[0]);
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('[rejectReturn]', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };

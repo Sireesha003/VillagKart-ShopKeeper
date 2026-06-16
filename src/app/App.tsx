@@ -308,23 +308,7 @@ export default function App() {
           flexShrink: 0,
         }}
       >
-        {/* Status Bar */}
-        <div className="absolute top-0 left-0 right-0 z-50 h-10 flex items-center px-7">
-          <span className="text-xs font-bold drop-shadow" style={{ color: "white", mixBlendMode: "difference" }}>9:41</span>
-          <div className="flex-1 flex justify-center">
-            <div className="w-24 h-5 bg-black rounded-full" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="flex gap-0.5 items-end h-3.5">
-              {[1, 2, 3, 4].map(b => (
-                <div key={b} className="w-1 rounded-sm" style={{ height: `${b * 3 + 2}px`, backgroundColor: "white", opacity: b <= 3 ? 0.9 : 0.4 }} />
-              ))}
-            </div>
-            <div className="w-6 h-3 rounded-sm border border-white/80 p-0.5 flex items-center">
-              <div className="h-full rounded-sm bg-green-400" style={{ width: "70%" }} />
-            </div>
-          </div>
-        </div>
+
 
         {/* Scrollable Content */}
         <div
