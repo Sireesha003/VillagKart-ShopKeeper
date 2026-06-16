@@ -37,9 +37,9 @@ export function PackingScreen({ onNavigate, onBack, order }: PackingScreenProps)
   const handleCompletePacking = async () => {
     if (allChecked && labelPrinted && order?.id) {
       try {
-        await api.put(`/orders/${order.id}/status`, { 
-          status: 'ready', 
-          tray_number: order.tray_number || order.tray || 'TBA' 
+        await api.put(`/orders/${order.id}/status`, {
+          status: 'ready',
+          tray_number: order.tray_number || order.tray || 'TBA'
         });
         onNavigate("ready-orders");
       } catch (err) {
@@ -79,7 +79,7 @@ export function PackingScreen({ onNavigate, onBack, order }: PackingScreenProps)
           <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-300"
-              style={{ width: `${items.length ? (totalChecked / items.length) * 100 : 0}%`, backgroundColor: allChecked ? "#4CAF50" : "#FFC107" }}
+              style={{ width: `${items.length ? (totalChecked / items.length) * 100 : 0}%`, backgroundColor: allChecked ? "#9E9E9E" : "#FFC107" }}
             />
           </div>
         </div>
@@ -131,9 +131,9 @@ export function PackingScreen({ onNavigate, onBack, order }: PackingScreenProps)
                   key={item.id}
                   onClick={() => toggle(item.id)}
                   className="flex items-center gap-3 py-2.5 px-3 rounded-xl text-left transition-colors border"
-                  style={{ 
+                  style={{
                     backgroundColor: isChecked ? "#E8F5E9" : "#F9F9F9",
-                    borderColor: isChecked ? "#C8E6C9" : "transparent" 
+                    borderColor: isChecked ? "#C8E6C9" : "transparent"
                   }}
                 >
                   {isChecked ? (

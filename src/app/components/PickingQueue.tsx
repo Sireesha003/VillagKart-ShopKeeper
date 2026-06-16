@@ -73,7 +73,7 @@ export function PickingQueue({ onNavigate, onBack }: PickingQueueProps) {
             <p className="text-white/70" style={{ fontSize: "12px" }}>{pickingOrders.length} orders to pick</p>
           </div>
           <div className="bg-white/20 rounded-full px-3 py-1">
-            <span className="text-white" style={{ fontWeight: 600, fontSize: "13px" }}>45 items total</span>
+            <span className="text-white" style={{ fontWeight: 600, fontSize: "13px" }}>{pickingOrders.reduce((sum, o) => sum + (o.items || 0), 0)} items total</span>
           </div>
         </div>
 

@@ -17,13 +17,13 @@ export function PackingQueue({ onNavigate, onBack }: PackingQueueProps) {
       const res = await api.get('/orders');
       // Filter for packing statuses
       const orders = res.data.filter((o: any) => o.status === 'packing');
-      
-      const trays = ["P01", "P03", "P05", "P07", "P09"];
+
+      const allTrays = ["P01", "P02", "P03", "P04", "P05"];
       const processedOrders = orders.map((o: any, index: number) => ({
         ...o,
         items: o.item_count || 0,
-        tray: o.tray_number || trays[index % trays.length],
-        urgent: o.sla_minutes <= 15
+        tray: o.tray_number || allTrays[index % allTrays.length],
+        urgent: o.sla_minutes < 15
       }));
       setPackingOrders(processedOrders);
     } catch (err) {
@@ -79,18 +79,21 @@ export function PackingQueue({ onNavigate, onBack }: PackingQueueProps) {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-gray-700 mb-3" style={{ fontWeight: 600, fontSize: "13px" }}>Packing Trays</h3>
           <div className="grid grid-cols-5 gap-2">
-            {["P01", "P03", "P05", "P07", "P09"].map((tray, i) => (
-              <div key={tray} className="flex flex-col items-center">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
-                  style={{ backgroundColor: i < 2 ? "#FFF3E0" : "#E8F5E9" }}
-                >
-                  <Package size={20} color={i < 2 ? "#EF5A06" : "#00891D"} />
+            {["P01", "P02", "P03", "P04", "P05"].map((tray) => {
+              const isActive = packingOrders.some(o => o.tray === tray);
+              return (
+                <div key={tray} className="flex flex-col items-center">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
+                    style={{ backgroundColor: isActive ? "#FFF3E0" : "#E8F5E9" }}
+                  >
+                    <Package size={20} color={isActive ? "#EF5A06" : "#00891D"} />
+                  </div>
+                  <span style={{ fontSize: "10px", fontWeight: 700, color: isActive ? "#EF5A06" : "#00891D" }}>{tray}</span>
+                  <span style={{ fontSize: "9px", color: "#9E9E9E" }}>{isActive ? "Active" : "Free"}</span>
                 </div>
-                <span style={{ fontSize: "10px", fontWeight: 700, color: i < 2 ? "#EF5A06" : "#00891D" }}>{tray}</span>
-                <span style={{ fontSize: "9px", color: "#9E9E9E" }}>{i < 2 ? "Active" : "Free"}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

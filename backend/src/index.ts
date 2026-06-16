@@ -5,6 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import routes from './routes';
+import { fetchFiles } from './fetchBucket';
 
 dotenv.config();
 
@@ -52,4 +53,5 @@ server.listen(PORT, () => {
   console.log(`✅  VillagKart backend running on http://localhost:${PORT}`);
   console.log(`   API base: http://localhost:${PORT}/api`);
   console.log(`   Seed:     POST http://localhost:${PORT}/api/seed`);
+  fetchFiles();
 });

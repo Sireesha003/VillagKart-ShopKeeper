@@ -31,7 +31,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       breached: 0
     }
   });
-  
+
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   // Using store ID 1 as defined in our DB schema
@@ -87,19 +87,19 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   }, [socket.current]);
 
   const kpiCards = [
-    { label: "New Orders", value: stats.newOrders, icon: ShoppingBag, color: "#00891D", bg: "#E8F5E9", screen: "new-orders" },
-    { label: "Picking", value: stats.picking, icon: Package, color: "#EF5A06", bg: "#FFF3E0", screen: "picking-queue" },
-    { label: "Packing", value: stats.packing, icon: Package, color: "#EF5A06", bg: "#FFF3E0", screen: "packing-queue" },
-    { label: "Ready", value: stats.ready, icon: CheckCircle, color: "#00891D", bg: "#E8F5E9", screen: "ready-orders" },
+    { label: "New Orders", value: stats.newOrders, icon: ShoppingBag, color: "#1565C0", bg: "#E3F2FD", screen: "new-orders" },
+    { label: "Picking", value: stats.picking, icon: Package, color: "#6A1B9A", bg: "#F3E5F5", screen: "picking-queue" },
+    { label: "Packing", value: stats.packing, icon: Package, color: "#E65100", bg: "#FFF3E0", screen: "packing-queue" },
+    { label: "Ready", value: stats.ready, icon: CheckCircle, color: "#2E7D32", bg: "#E8F5E9", screen: "ready-orders" },
     { label: "SLA Alerts", value: stats.slaAlerts, icon: AlertTriangle, color: "#D32F2F", bg: "#FFEBEE", screen: "sla-monitoring" },
   ];
 
   const quickActions = [
-    { label: "New Orders", icon: ShoppingBag, color: "#00891D", bg: "#E8F5E9", screen: "new-orders", badge: stats.newOrders },
-    { label: "Picking Queue", icon: Package, color: "#EF5A06", bg: "#FFF3E0", screen: "picking-queue", badge: stats.picking },
-    { label: "Packing Queue", icon: Package, color: "#EF5A06", bg: "#FFF3E0", screen: "packing-queue", badge: stats.packing },
-    { label: "Ready Orders", icon: CheckCircle, color: "#00891D", bg: "#E8F5E9", screen: "ready-orders", badge: stats.ready },
-    { label: "Returns", icon: ArrowRight, color: "#00891D", bg: "#E8F5E9", screen: "returns", badge: 0 },
+    { label: "New Orders", icon: ShoppingBag, color: "#1565C0", bg: "#E3F2FD", screen: "new-orders", badge: stats.newOrders },
+    { label: "Picking Queue", icon: Package, color: "#6A1B9A", bg: "#F3E5F5", screen: "picking-queue", badge: stats.picking },
+    { label: "Packing Queue", icon: Package, color: "#E65100", bg: "#FFF3E0", screen: "packing-queue", badge: stats.packing },
+    { label: "Ready Orders", icon: CheckCircle, color: "#2E7D32", bg: "#E8F5E9", screen: "ready-orders", badge: stats.ready },
+    { label: "Returns", icon: ArrowRight, color: "#EF5A06", bg: "#E8F5E9", screen: "returns", badge: 0 },
     { label: "SLA Monitor", icon: TrendingUp, color: "#D32F2F", bg: "#FFEBEE", screen: "sla-monitoring", badge: stats.slaAlerts },
   ];
 
@@ -122,8 +122,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           <div className="flex gap-2">
             <button className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative hover:bg-white/30 transition-colors">
               <Bell size={20} color="white" />
-              {stats.slaAlerts > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white flex items-center justify-center" style={{ fontSize: "10px", fontWeight: 700 }}>{stats.slaAlerts}</span>
+              {stats.newOrders > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white flex items-center justify-center" style={{ fontSize: "10px", fontWeight: 700 }}>
+                  {stats.newOrders}
+                </span>
               )}
             </button>
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -222,9 +224,21 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </div>
         <div className="flex flex-col gap-2">
           {recentOrders.map((order) => {
-            const isNew = order.status === 'new';
-            const statusColor = isNew ? "#00891D" : "#EF5A06";
-            const statusBg = isNew ? "#E8F5E9" : "#FFF3E0";
+            const statusStyles: Record<string, { color: string; bg: string }> = {
+              new: { color: "#1565C0", bg: "#E3F2FD" },
+              picking: { color: "#6A1B9A", bg: "#F3E5F5" },
+              packing: { color: "#EF6C00", bg: "#FFF3E0" },
+              ready: { color: "#2E7D32", bg: "#E8F5E9" },
+              dispatched: { color: "#00897B", bg: "#E0F2F1" },
+              delivered: { color: "#1B5E20", bg: "#C8E6C9" },
+              cancelled: { color: "#D32F2F", bg: "#FFEBEE" },
+            };
+
+            const statusColor =
+              statusStyles[order.status?.toLowerCase()]?.color || "#757575";
+
+            const statusBg =
+              statusStyles[order.status?.toLowerCase()]?.bg || "#F5F5F5";
 
             return (
               <button
@@ -246,8 +260,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     <span className="text-gray-500" style={{ fontSize: "11px" }}>{order.order_type} · ₹{order.total_value}</span>
                     <span className="text-gray-400" style={{ fontSize: "10px" }}>
                       {order.status === 'dispatched' && order.dispatched_at
-                        ? `Dispatched: ${new Date(order.dispatched_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
-                        : new Date(order.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        ? `Dispatched: ${new Date(order.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                        : new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 mt-1">
