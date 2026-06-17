@@ -174,10 +174,32 @@ export const pickItem = async (req: Request, res: Response) => {
     `, [orderId]);
 
     if (Number(remaining[0].cnt) === 0) {
-      await pool.query(`
-        UPDATE orders SET status = 'packing', picking_completed_at = TIMEZONE('Asia/Kolkata', NOW()), updated_at = TIMEZONE('Asia/Kolkata', NOW()) WHERE id = $1
+      // Atomically pick the next free tray using a CTE — avoids race conditions
+      // where two orders finishing at the same time both read the same "free" list.
+      const { rows: updatedRows } = await pool.query(`
+        WITH used_trays AS (
+          SELECT tray_number FROM orders
+          WHERE status = 'packing' AND tray_number IS NOT NULL AND id != $1
+          FOR UPDATE
+        ),
+        free_tray AS (
+          SELECT t.tray_num
+          FROM (VALUES ('P01'),('P02'),('P03'),('P04'),('P05')) AS t(tray_num)
+          WHERE t.tray_num NOT IN (SELECT tray_number FROM used_trays)
+          ORDER BY t.tray_num
+          LIMIT 1
+        )
+        UPDATE orders
+        SET status = 'packing',
+            tray_number = COALESCE((SELECT tray_num FROM free_tray), 'P01'),
+            picking_completed_at = TIMEZONE('Asia/Kolkata', NOW()),
+            updated_at = TIMEZONE('Asia/Kolkata', NOW())
+        WHERE id = $1
+        RETURNING tray_number
       `, [orderId]);
-      io.emit('order:status', { orderId, status: 'packing' });
+
+      const assignedTray = updatedRows[0]?.tray_number || 'P01';
+      io.emit('order:status', { orderId, status: 'packing', tray_number: assignedTray });
     } else {
       io.emit('order:item_picked', { orderId, itemId });
     }

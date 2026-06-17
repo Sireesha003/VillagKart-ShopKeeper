@@ -120,9 +120,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <h1 className="text-white text-xl" style={{ fontWeight: 700 }}>Hyderabad Store 01</h1>
           </div>
           <div className="flex gap-2">
-            <button               
-              onClick={() => onNavigate("new-orders")}
-              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative hover:bg-white/30 transition-colors">
+            <button className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative hover:bg-white/30 transition-colors">
               <Bell size={20} color="white" />
               {stats.newOrders > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white flex items-center justify-center" style={{ fontSize: "10px", fontWeight: 700 }}>
@@ -167,11 +165,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-gray-800" style={{ fontWeight: 600, fontSize: "14px" }}>Today's Summary</h3>
-            <span className="text-[#00891D] text-xs font-medium cursor-pointer">View All</span>
+            <span className="text-[#00891D] text-xs font-medium cursor-pointer"></span>
           </div>
           <div className="grid grid-cols-4 gap-3">
             {[
-              { label: "Total", value: stats.todaySummary.total, color: "#00891D" },
+              { label: "Total", value: stats.todaySummary.total, color: "#1565C0" },
               { label: "Completed", value: stats.todaySummary.completed, color: "#00891D" },
               { label: "In Progress", value: stats.todaySummary.inProgress, color: "#EF5A06" },
               { label: "Breached", value: stats.todaySummary.breached, color: "#D32F2F" },

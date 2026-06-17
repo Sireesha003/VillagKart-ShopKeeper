@@ -4,7 +4,7 @@ import api from "../../api/axios";
 import { useSocket } from "../../hooks/useSocket";
 
 interface PackingQueueProps {
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: string, data?: any) => void;
   onBack: () => void;
 }
 
@@ -18,13 +18,42 @@ export function PackingQueue({ onNavigate, onBack }: PackingQueueProps) {
       // Filter for packing statuses
       const orders = res.data.filter((o: any) => o.status === 'packing');
 
+      // Use tray_number from DB as source of truth.
+      // For any legacy order missing a tray, assign sequentially (NOT in parallel)
+      // so each order picks the next truly-free tray one at a time.
       const allTrays = ["P01", "P02", "P03", "P04", "P05"];
-      const processedOrders = orders.map((o: any, index: number) => ({
-        ...o,
-        items: o.item_count || 0,
-        tray: o.tray_number || allTrays[index % allTrays.length],
-        urgent: o.sla_minutes < 15
-      }));
+      const assignedTrays = new Set<string>(
+        orders.filter((o: any) => o.tray_number).map((o: any) => o.tray_number as string)
+      );
+
+      const processedOrders: any[] = [];
+      for (const o of orders) {
+        // Trust the tray_number already assigned atomically by the backend.
+        // If for some reason it's missing (legacy / edge case), pick the next
+        // truly-free slot sequentially and persist it — but do NOT fall back
+        // silently to 'P01' which masks duplicate-tray bugs.
+        let tray: string = o.tray_number;
+        if (!tray) {
+          const nextFreeTray = allTrays.find(t => !assignedTrays.has(t));
+          tray = nextFreeTray || 'P??'; // 'P??' is intentionally visible so the bug is noticed
+          if (nextFreeTray) {
+            assignedTrays.add(tray);
+            // Persist so it's stable across refreshes
+            try {
+              await api.put(`/orders/${o.id}/status`, { status: 'packing', tray_number: tray });
+            } catch (e) {
+              console.warn('Failed to persist tray assignment', e);
+            }
+          }
+        }
+        processedOrders.push({
+          ...o,
+          items: o.item_count || 0,
+          tray,
+          urgent: o.sla_minutes < 15
+        });
+      }
+
       setPackingOrders(processedOrders);
     } catch (err) {
       console.error(err);
@@ -79,21 +108,34 @@ export function PackingQueue({ onNavigate, onBack }: PackingQueueProps) {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-gray-700 mb-3" style={{ fontWeight: 600, fontSize: "13px" }}>Packing Trays</h3>
           <div className="grid grid-cols-5 gap-2">
-            {["P01", "P02", "P03", "P04", "P05"].map((tray) => {
-              const isActive = packingOrders.some(o => o.tray === tray);
-              return (
-                <div key={tray} className="flex flex-col items-center">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
-                    style={{ backgroundColor: isActive ? "#FFF3E0" : "#E8F5E9" }}
-                  >
-                    <Package size={20} color={isActive ? "#EF5A06" : "#00891D"} />
+            {(() => {
+              // Collect all trays currently in use by real orders
+              const activeTraySet = new Set(packingOrders.map(o => o.tray).filter(Boolean));
+              // Build a display list: active trays first, then fill remaining slots up to 5 with free trays
+              const allSlots = ["P01", "P02", "P03", "P04", "P05"];
+              // Keep original order but mark each slot correctly
+              return allSlots.map((tray) => {
+                const isActive = activeTraySet.has(tray);
+                const matchedOrder = packingOrders.find(o => o.tray === tray);
+                return (
+                  <div key={tray} className="flex flex-col items-center">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center mb-1"
+                      style={{
+                        backgroundColor: isActive ? "#FFF3E0" : "#E8F5E9",
+                        border: isActive ? "2px solid #EF5A0633" : "2px solid transparent"
+                      }}
+                    >
+                      <Package size={20} color={isActive ? "#EF5A06" : "#00891D"} />
+                    </div>
+                    <span style={{ fontSize: "10px", fontWeight: 700, color: isActive ? "#EF5A06" : "#00891D" }}>{tray}</span>
+                    <span style={{ fontSize: "9px", color: isActive ? "#EF5A06" : "#2b7724ff", fontWeight: isActive ? 600 : 400 }}>
+                      {isActive ? (matchedOrder?.order_number || "Active") : "Free"}
+                    </span>
                   </div>
-                  <span style={{ fontSize: "10px", fontWeight: 700, color: isActive ? "#EF5A06" : "#00891D" }}>{tray}</span>
-                  <span style={{ fontSize: "9px", color: "#9E9E9E" }}>{isActive ? "Active" : "Free"}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
           </div>
         </div>
       </div>
@@ -137,7 +179,7 @@ export function PackingQueue({ onNavigate, onBack }: PackingQueueProps) {
                 style={{ backgroundColor: "#EF5A06" }}
               >
                 <Play size={16} color="white" />
-                <span className="text-white" style={{ fontWeight: 600, fontSize: "14px" }}>Start Packing</span>
+                <span className="text-white" style={{ fontWeight: 600, fontSize: "14px" }}>Start Packing — Tray {order.tray}</span>
               </button>
             </div>
           </div>
