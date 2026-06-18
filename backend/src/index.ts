@@ -12,15 +12,22 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
+// Parse CORS_ORIGIN — supports comma-separated list or '*'
+const rawOrigin = process.env.CORS_ORIGIN || '*';
+const corsOrigin: string | string[] =
+  rawOrigin === '*'
+    ? '*'
+    : rawOrigin.split(',').map((o) => o.trim());
+
 const io = new SocketIOServer(server, {
   cors: {
-    origin: '*',
+    origin: corsOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
 });
 
 // ── Middleware ─────────────────────────────────────────────────────────────
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: corsOrigin }));
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
 
@@ -49,9 +56,11 @@ export { io };
 
 // ── Start Server ───────────────────────────────────────────────────────────
 const PORT = Number(process.env.PORT) || 3001;
-server.listen(PORT, () => {
-  console.log(`✅  VillagKart backend running on http://localhost:${PORT}`);
-  console.log(`   API base: http://localhost:${PORT}/api`);
-  console.log(`   Seed:     POST http://localhost:${PORT}/api/seed`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅  VillagKart backend running on port ${PORT}`);
+  console.log(`   API base: /api`);
+  console.log(`   Health:   GET /health`);
+  console.log(`   Seed:     POST /api/seed`);
+  console.log(`   CORS allowed: ${rawOrigin}`);
   fetchFiles();
 });
