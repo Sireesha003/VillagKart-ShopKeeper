@@ -12,11 +12,14 @@ build/
 .env
 .env.local
 .env.*.local
+frontend/.env
+frontend/.env.local
 backend/.env
 backend/.env.local
 
 # Keep example templates in version control
 !.env.example
+!frontend/.env.example
 !backend/.env.example
 
 # ── OS / Editor ─────────────────────────────────────────────────
