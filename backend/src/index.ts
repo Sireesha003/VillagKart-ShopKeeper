@@ -90,6 +90,6 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`   API base: /api`);
   console.log(`   Health:   GET /health`);
   console.log(`   Seed:     POST /api/seed`);
-  console.log(`   CORS allowed: ${rawOrigin}`);
+  console.log(`   CORS allowed: *.vercel.app, localhost${extraOrigins.length ? ', ' + extraOrigins.join(', ') : ''}`);
   fetchFiles();
 });
