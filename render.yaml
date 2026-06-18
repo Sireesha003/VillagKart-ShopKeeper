@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: villagkart-backend
+    runtime: node
+    region: singapore   # closest to ap-south-1 (Supabase)
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false           # Set manually in Render dashboard
+      - key: DIRECT_URL
+        sync: false           # Set manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false           # Set manually in Render dashboard
+      - key: CORS_ORIGIN
+        sync: false           # Set to your Vercel URL after frontend deploy
