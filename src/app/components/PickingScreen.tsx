@@ -30,7 +30,7 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
     if (!order?.id) return;
     api.get(`/orders/${order.id}`).then(async res => {
       setItems(res.data.items || []);
-      
+
       // If the order is still "accepted", mark it as "picking" to trigger picking_started_at
       if (res.data.status === 'accepted') {
         try {
@@ -39,7 +39,7 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
           console.error('Failed to update status to picking', e);
         }
       }
-      
+
       setLoading(false);
     }).catch(err => {
       console.error(err);
@@ -50,11 +50,11 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
   const handlePick = async (itemId: number) => {
     try {
       await api.put(`/orders/${order.id}/items/${itemId}/pick`);
-      const newItems = items.map(item => 
+      const newItems = items.map(item =>
         item.id === itemId ? { ...item, is_picked: true, picked_qty: item.quantity } : item
       );
       setItems(newItems);
-      
+
       const allPicked = newItems.every(i => i.is_picked);
       if (allPicked) {
         setTimeout(async () => {
@@ -67,7 +67,7 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
           }
         }, 300);
       }
-    } catch(err) {
+    } catch (err) {
       console.error(err);
     }
   };
@@ -142,14 +142,7 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
 
               <div className="mt-3 bg-gray-50 rounded-xl p-2.5 flex items-center justify-between">
                 <span className="text-gray-400" style={{ fontSize: "11px", fontFamily: "monospace" }}>Barcode: {currentItem.barcode}</span>
-                <button
-                  onClick={() => onNavigate("barcode-verification", { ...order, currentItem })}
-                  className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
-                  style={{ backgroundColor: "#00891D" }}
-                >
-                  <Scan size={13} color="white" />
-                  <span className="text-white" style={{ fontWeight: 600, fontSize: "12px" }}>Scan</span>
-                </button>
+
               </div>
 
               <div className="flex gap-3 mt-3">
@@ -192,7 +185,7 @@ export function PickingScreen({ onNavigate, onBack, order }: PickingScreenProps)
                   </div>
                   <div className="flex-1">
                     <p style={{ fontWeight: 600, fontSize: "14px", color: isPicked ? "#2E7D32" : "#212121" }}>{item.name}</p>
-                    <p style={{ fontSize: "13px", color: "#757575", fontWeight: 500, marginTop: "2px" }}>Qty: {item.quantity} · Location: <span style={{color: "#D32F2F", fontWeight: 700}}>{item.aisle_location}</span></p>
+                    <p style={{ fontSize: "13px", color: "#757575", fontWeight: 500, marginTop: "2px" }}>Qty: {item.quantity} · Location: <span style={{ color: "#D32F2F", fontWeight: 700 }}>{item.aisle_location}</span></p>
                   </div>
                   {isPicked ? (
                     <CheckCircle size={18} color="#2E7D32" />

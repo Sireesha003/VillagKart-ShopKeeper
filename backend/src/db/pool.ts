@@ -1,7 +1,13 @@
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Fix: pg treats TIMESTAMP (no timezone, OID 1114) as local time by default.
+// Since Supabase/Postgres stores all timestamps in UTC, we must tell pg to
+// parse them as UTC strings (by appending 'Z') so JavaScript Date objects
+// are correct everywhere in the app.
+types.setTypeParser(1114, (str: string) => str ? new Date(str + 'Z') : null);
 
 // Use DIRECT_URL for schema/migration work (bypasses pgbouncer)
 // Use DATABASE_URL (pgbouncer) for all runtime queries

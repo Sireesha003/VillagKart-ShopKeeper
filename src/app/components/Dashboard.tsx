@@ -260,9 +260,25 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   <div className="flex items-center justify-between mt-0.5">
                     <span className="text-gray-500" style={{ fontSize: "11px" }}>{order.order_type} · ₹{order.total_value}</span>
                     <span className="text-gray-400" style={{ fontSize: "10px" }}>
-                      {order.status === 'dispatched' && order.dispatched_at
-                        ? `Dispatched: ${new Date(order.dispatched_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                        : new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {(() => {
+                        const statusTimeMap: Record<string, { label: string; field: string }> = {
+                          new:        { label: "Placed",     field: "created_at" },
+                          accepted:   { label: "Accepted",   field: "accepted_at" },
+                          picking:    { label: "Picking",    field: "picking_started_at" },
+                          packing:    { label: "Packing",    field: "packing_started_at" },
+                          ready:      { label: "Ready",      field: "packing_completed_at" },
+                          dispatched: { label: "Dispatched", field: "dispatched_at" },
+                          delivered:  { label: "Delivered",  field: "dispatched_at" },
+                          cancelled:  { label: "Cancelled",  field: "updated_at" },
+                        };
+                        const entry = statusTimeMap[order.status?.toLowerCase()];
+                        const ts = entry ? order[entry.field] : order.created_at;
+                        const label = entry?.label ?? "Placed";
+                        const time = ts
+                          ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          : new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        return `${label}: ${time}`;
+                      })()}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 mt-1">

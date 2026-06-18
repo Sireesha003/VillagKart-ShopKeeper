@@ -295,90 +295,68 @@ export default function App() {
 
   // Mobile Layout
   return (
-    <div className="min-h-screen bg-gray-200 flex items-center justify-center p-4" style={{ fontFamily: "'Roboto', system-ui, sans-serif" }}>
-      {/* Mobile Device Frame */}
+    <div className="min-h-screen flex flex-col bg-white" style={{ fontFamily: "'Roboto', system-ui, sans-serif" }}>
+      {/* Scrollable Content */}
       <div
-        className="relative bg-white overflow-hidden"
-        style={{
-          width: "390px",
-          height: "844px",
-          borderRadius: "44px",
-          border: "10px solid #1a1a1a",
-          boxShadow: "0 0 0 2px #444, 0 40px 80px rgba(0,0,0,0.35), inset 0 0 0 1px #555",
-          flexShrink: 0,
-        }}
+        className="flex-1 overflow-y-auto"
+        style={{ paddingBottom: showNav ? "72px" : "0px", scrollbarWidth: "none" }}
       >
+        {renderScreen()}
+      </div>
 
-
-        {/* Scrollable Content */}
+      {/* Bottom Navigation Bar — fixed to bottom of screen */}
+      {showNav && (
         <div
-          className="absolute inset-0 overflow-y-auto"
-          style={{ paddingBottom: showNav ? "72px" : "0px", scrollbarWidth: "none" }}
+          className="fixed bottom-0 left-0 right-0 bg-white"
+          style={{
+            height: "72px",
+            borderTop: "1px solid rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            zIndex: 50,
+          }}
         >
-          {renderScreen()}
-        </div>
-
-        {/* Bottom Navigation Bar */}
-        {showNav && (
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-white"
-            style={{
-              height: "72px",
-              borderTop: "1px solid rgba(0,0,0,0.08)",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            {navItems.map((item) => {
-              const isActive = activeNavKey === item.key;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => navNavigate(item.key)}
-                  className="flex-1 flex flex-col items-center justify-center gap-1 py-1 relative"
-                >
-                  {isActive && (
-                    <div
-                      className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full"
-                      style={{ width: "40px", height: "3px", backgroundColor: "#00891D" }}
-                    />
-                  )}
+          {navItems.map((item) => {
+            const isActive = activeNavKey === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => navNavigate(item.key)}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-1 relative"
+              >
+                {isActive && (
                   <div
-                    className="flex items-center justify-center rounded-full transition-all"
-                    style={{
-                      width: "40px",
-                      height: "28px",
-                      backgroundColor: isActive ? "#E8F5E9" : "transparent",
-                    }}
-                  >
-                    <item.icon
-                      size={20}
-                      color={isActive ? "#00891D" : "#9E9E9E"}
-                      strokeWidth={isActive ? 2.5 : 1.5}
-                    />
-                  </div>
-                  <span style={{
-                    fontSize: "10px",
-                    fontWeight: isActive ? 700 : 400,
-                    color: isActive ? "#00891D" : "#9E9E9E",
-                    lineHeight: 1,
-                  }}>
-                    {item.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Screen indicator below frame */}
-      <div
-        className="absolute bottom-6 text-gray-400 text-center hidden md:block"
-        style={{ fontSize: "11px", letterSpacing: "0.5px" }}
-      >
-        SHOPKEEPER APP · {screen.replace(/-/g, " ").toUpperCase()}
-      </div>
+                    className="absolute top-0 left-1/2 -translate-x-1/2 rounded-full"
+                    style={{ width: "40px", height: "3px", backgroundColor: "#00891D" }}
+                  />
+                )}
+                <div
+                  className="flex items-center justify-center rounded-full transition-all"
+                  style={{
+                    width: "40px",
+                    height: "28px",
+                    backgroundColor: isActive ? "#E8F5E9" : "transparent",
+                  }}
+                >
+                  <item.icon
+                    size={20}
+                    color={isActive ? "#00891D" : "#9E9E9E"}
+                    strokeWidth={isActive ? 2.5 : 1.5}
+                  />
+                </div>
+                <span style={{
+                  fontSize: "10px",
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? "#00891D" : "#9E9E9E",
+                  lineHeight: 1,
+                }}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

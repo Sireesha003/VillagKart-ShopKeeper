@@ -85,7 +85,7 @@ export const acceptOrder = async (req: Request, res: Response) => {
 
     const { rows } = await pool.query(`
       UPDATE orders
-      SET status = 'accepted', accepted_at = TIMEZONE('Asia/Kolkata', NOW()), updated_at = TIMEZONE('Asia/Kolkata', NOW())
+      SET status = 'accepted', accepted_at = NOW(), updated_at = NOW()
       WHERE id = $1 AND status = 'new'
       RETURNING *
     `, [id]);
@@ -107,7 +107,7 @@ export const rejectOrder = async (req: Request, res: Response) => {
 
     const { rows } = await pool.query(`
       UPDATE orders
-      SET status = 'cancelled', updated_at = TIMEZONE('Asia/Kolkata', NOW())
+      SET status = 'cancelled', updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `, [id]);
@@ -129,16 +129,16 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const { status, tray_number } = req.body;
 
     const tsField: Record<string, string> = {
-      picking:    ", picking_started_at = TIMEZONE('Asia/Kolkata', NOW())",
-      packing:    ", packing_started_at = TIMEZONE('Asia/Kolkata', NOW())",
-      ready:      ", packing_completed_at = TIMEZONE('Asia/Kolkata', NOW())",
-      dispatched: ", dispatched_at = TIMEZONE('Asia/Kolkata', NOW())",
+      picking:    ', picking_started_at = NOW()',
+      packing:    ', packing_started_at = NOW()',
+      ready:      ', packing_completed_at = NOW()',
+      dispatched: ', dispatched_at = NOW()',
     };
     const extra = tsField[status] || '';
 
     const { rows } = await pool.query(`
       UPDATE orders
-      SET status = $1, updated_at = TIMEZONE('Asia/Kolkata', NOW())${extra}
+      SET status = $1, updated_at = NOW()${extra}
           ${tray_number ? ', tray_number = $3' : ''}
       WHERE id = $2
       RETURNING *
@@ -192,8 +192,9 @@ export const pickItem = async (req: Request, res: Response) => {
         UPDATE orders
         SET status = 'packing',
             tray_number = COALESCE((SELECT tray_num FROM free_tray), 'P01'),
-            picking_completed_at = TIMEZONE('Asia/Kolkata', NOW()),
-            updated_at = TIMEZONE('Asia/Kolkata', NOW())
+            picking_completed_at = NOW(),
+            packing_started_at   = NOW(),
+            updated_at           = NOW()
         WHERE id = $1
         RETURNING tray_number
       `, [orderId]);
