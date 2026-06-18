@@ -12,24 +12,53 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Parse CORS_ORIGIN — supports comma-separated list or '*'
-const rawOrigin = process.env.CORS_ORIGIN || '*';
-const corsOrigin: string | string[] =
-  rawOrigin === '*'
-    ? '*'
-    : rawOrigin.split(',').map((o) => o.trim());
+// ── CORS ───────────────────────────────────────────────────────────────────
+// Allowed origins: explicit list from env + always allow *.vercel.app & localhost
+const extraOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return true; // same-origin / non-browser requests
+  if (origin.includes('localhost') || origin.includes('127.0.0.1')) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  if (extraOrigins.includes('*') || extraOrigins.includes(origin)) return true;
+  return false;
+}
+
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
 
 const io = new SocketIOServer(server, {
   cors: {
-    origin: corsOrigin,
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
   },
 });
 
 // ── Middleware ─────────────────────────────────────────────────────────────
-app.use(cors({ origin: corsOrigin }));
+app.use(cors(corsOptions));
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.json());
+
 
 // ── Routes ─────────────────────────────────────────────────────────────────
 app.use('/api', routes);
