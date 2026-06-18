@@ -120,7 +120,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <h1 className="text-white text-xl" style={{ fontWeight: 700 }}>Hyderabad Store 01</h1>
           </div>
           <div className="flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative hover:bg-white/30 transition-colors">
+            <button onClick={() => onNavigate("new-orders")} 
+              className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center relative hover:bg-white/30 transition-colors">
               <Bell size={20} color="white" />
               {stats.newOrders > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-white flex items-center justify-center" style={{ fontSize: "10px", fontWeight: 700 }}>
